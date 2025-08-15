@@ -1,12 +1,13 @@
 const { DataTypes } = require('sequelize');
-const { sequelize } = require('../configure/db');
 const bcrypt = require('bcrypt');
+const { sequelize } = require('../configure/sqlite-db');
 
+// Define User model for SQLite
 const User = sequelize.define('User', {
   id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
   },
   email: {
     type: DataTypes.STRING,
@@ -88,6 +89,11 @@ User.prototype.toJSON = function() {
   return values;
 };
 
+User.prototype.updateLastLogin = async function() {
+  this.lastLogin = new Date();
+  await this.save();
+};
+
 // Class methods
 User.findByEmail = async function(email) {
   return await this.findOne({ where: { email, isActive: true } });
@@ -99,6 +105,20 @@ User.createAdmin = async function(userData) {
 
 User.createUser = async function(userData) {
   return await this.create({ ...userData, role: 'user' });
+};
+
+User.getAllUsers = async function() {
+  return await this.findAll({ 
+    where: { isActive: true },
+    order: [['created_at', 'DESC']]
+  });
+};
+
+User.getUsersByRole = async function(role) {
+  return await this.findAll({ 
+    where: { role, isActive: true },
+    order: [['created_at', 'DESC']]
+  });
 };
 
 module.exports = User;
