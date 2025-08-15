@@ -15,6 +15,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [focusedField, setFocusedField] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [info, setInfo] = useState('');
   
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -27,6 +28,36 @@ export default function Login() {
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors({ ...errors, [name]: '' });
+    }
+  };
+
+  const handleUseLastRandom = async () => {
+    try {
+      const saved = localStorage.getItem('last_random_user');
+      if (!saved) {
+        setErrors({ general: 'No saved random account found. Use Random Login first.' });
+        return;
+      }
+      const creds = JSON.parse(saved);
+      const { email, password } = creds || {};
+      if (!email || !password) {
+        setErrors({ general: 'Saved credentials are invalid. Generate a new random account.' });
+        return;
+      }
+      setFormData({ email, password });
+      setIsLoading(true);
+      const res = await api.post('/auth/login', { email, password });
+      const { token, user } = res.data;
+      if (token) localStorage.setItem('token', token);
+      dispatch(loginSuccess({ user, token }));
+      const role = (user && user.role) || 'user';
+      navigate(role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
+    } catch (error) {
+      console.error('Re-login failed:', error);
+      const msg = error?.response?.data?.message || 'Re-login failed. Please try again.';
+      setErrors({ general: msg });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -70,11 +101,13 @@ export default function Login() {
       // Update app state
       dispatch(loginSuccess({ user, token }));
       
-      // Redirect to user dashboard
-      navigate('/user/dashboard');
+      // Redirect based on role
+      const role = (user && user.role) || 'user';
+      navigate(role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
     } catch (error) {
       console.error('Login failed:', error);
-      setErrors({ general: 'Login failed. Please try again.' });
+      const msg = error?.response?.data?.message || 'Login failed. Please try again.';
+      setErrors({ general: msg });
     } finally {
       setIsLoading(false);
     }
@@ -85,12 +118,42 @@ export default function Login() {
     setTimeout(() => {
       const token = 'demo-token';
       localStorage.setItem('token', token);
-      dispatch(loginSuccess({ 
-        user: { name: 'Demo User', email: 'demo@quizmaster.com' }, 
-        token 
-      }));
+      const demoUser = { name: 'Demo User', email: 'demo@quizmaster.com', role: 'user' };
+      dispatch(loginSuccess({ user: demoUser, token }));
       navigate('/user/dashboard');
     }, 500);
+  };
+
+  const handleRandomLogin = async () => {
+    // Generate random credentials
+    const randomSuffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    const email = `user_${randomSuffix}@auto.local`;
+    const password = Math.random().toString(36).slice(2, 10);
+    const fullName = `Auto User ${randomSuffix.slice(-4)}`;
+
+    // Prefill form so user can reuse later
+    setFormData({ email, password });
+    setErrors({});
+    setInfo('');
+    setIsLoading(true);
+
+    try {
+      const res = await api.post('/auth/login', { email, password, fullName });
+      const { token, user } = res.data;
+      if (token) localStorage.setItem('token', token);
+      // Save last generated creds for easy re-login after logout (dev convenience)
+      localStorage.setItem('last_random_user', JSON.stringify({ email, password }));
+      dispatch(loginSuccess({ user, token }));
+      const role = (user && user.role) || 'user';
+      setInfo(`Random account created. Save these to re-login later: ${email} / ${password}`);
+      navigate(role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
+    } catch (error) {
+      console.error('Random login failed:', error);
+      const msg = error?.response?.data?.message || 'Random login failed. Please try again.';
+      setErrors({ general: msg });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -233,6 +296,13 @@ export default function Login() {
             <div className="flex-1 h-px bg-white/20"></div>
           </div>
 
+          {/* Info message (e.g., random credentials) */}
+          {info && (
+            <div className="mb-3 p-3 rounded-lg bg-white/10 text-white text-sm border border-white/20 break-words">
+              {info}
+            </div>
+          )}
+
           {/* Alternative Login Options */}
           <div className="space-y-3">
             {/* Google Login */}
@@ -249,6 +319,22 @@ export default function Login() {
               className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center gap-2"
             >
               <span>⚡</span> Try Demo Login
+            </button>
+
+            {/* Random Login (auto-register) */}
+            <button
+              onClick={handleRandomLogin}
+              className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center gap-2"
+            >
+              <span>🎲</span> Random Login (Auto Register)
+            </button>
+
+            {/* Use Last Random Account */}
+            <button
+              onClick={handleUseLastRandom}
+              className="w-full py-3 bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center gap-2"
+            >
+              <span>🔁</span> Use Last Random Account
             </button>
           </div>
 

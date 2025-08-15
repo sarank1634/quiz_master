@@ -2,11 +2,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/apiClient';
-import Navbar from '../components/Navbar';
-import QuizCard from '../components/QuizCard';
-import QuizRunner from '../components/QuizRunner';
-import ScoreTable from '../components/ScoreTable';
-import SummaryCharts from '../components/SummaryCharts';
+import Navbar from '../Components/Navbar';
+import QuizRunner from '../Components/QuizRunner';
+import ScoreTable from '../Components/ScoreTable';
+import SummaryCharts from '../Components/SummaryCharts';
+import Loading from '../Components/Loading';
+import FilterBar from '../Components/FilterBar';
+import EmptyState from '../Components/EmptyState';
+import QuizList from '../Components/QuizList';
 import { formatISO, parseISO } from 'date-fns';
 
 export default function UserDashboard() {
@@ -19,6 +22,7 @@ export default function UserDashboard() {
   const [activeQuiz, setActiveQuiz] = useState(null);
   const [quizOpen, setQuizOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // protect route: redirect if no token
   useEffect(() => {
@@ -28,27 +32,28 @@ export default function UserDashboard() {
       return;
     }
 
-    async function init() {
-      try {
-        setLoading(true);
-        const [profileRes, quizzesRes, scoresRes] = await Promise.all([
-          api.get('/auth/profile'),
-          api.get('/quizzes/upcoming'), // backend route
-          api.get('/scores/me')
-        ]);
-        setUser(profileRes.data.user);
-        setQuizzes(quizzesRes.data.quizzes || []);
-        setScores(scoresRes.data.scores || []);
-      } catch (err) {
-        console.error(err);
-        // If unauthorized, redirect to login
-        if (err.response && err.response.status === 401) nav('/login');
-      } finally {
-        setLoading(false);
-      }
-    }
+    async function init() { await refreshData(true); }
     init();
   }, [nav]);
+
+  async function refreshData(initial = false) {
+    try {
+      if (initial) setLoading(true); else setRefreshing(true);
+      const [profileRes, quizzesRes, scoresRes] = await Promise.all([
+        api.get('/auth/profile'),
+        api.get('/quizzes/upcoming'),
+        api.get('/scores/me')
+      ]);
+      setUser(profileRes.data.user);
+      setQuizzes(quizzesRes.data.quizzes || []);
+      setScores(scoresRes.data.scores || []);
+    } catch (err) {
+      console.error(err);
+      if (err.response && err.response.status === 401) nav('/login');
+    } finally {
+      if (initial) setLoading(false); else setRefreshing(false);
+    }
+  }
 
   function filteredQuizzes() {
     return quizzes.filter(q => {
@@ -67,7 +72,7 @@ export default function UserDashboard() {
     api.post('/events', { type: 'quiz_start', quizId: q.id, userId: user.id, ts: new Date().toISOString() }).catch(()=>{});
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (loading) return <Loading label="Preparing your dashboard..." className="min-h-screen" />;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -79,33 +84,40 @@ export default function UserDashboard() {
             <p className="text-sm text-gray-500">Pick an upcoming quiz and start practicing.</p>
           </div>
 
-          <div className="flex gap-3 items-center">
-            <input
-              placeholder="Search by subject / chapter"
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-              className="p-2 border rounded w-72"
-            />
-            <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="p-2 border rounded" />
-            <button onClick={() => { setFilterText(''); setDateFilter(''); }} className="text-sm text-gray-600">Clear</button>
-          </div>
+          <FilterBar
+            filterText={filterText}
+            setFilterText={setFilterText}
+            dateFilter={dateFilter}
+            setDateFilter={setDateFilter}
+            onClear={() => { setFilterText(''); setDateFilter(''); }}
+            onRefresh={() => refreshData(false)}
+          />
         </header>
 
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium">Upcoming Quizzes</h3>
-              <div className="text-sm text-gray-500">{filteredQuizzes().length} found</div>
+              <div className="text-sm text-gray-500 flex items-center gap-2">
+                {refreshing && <span className="animate-pulse">Refreshing…</span>}
+                <span>{filteredQuizzes().length} found</span>
+              </div>
             </div>
 
-            <div className="space-y-3">
-              {filteredQuizzes().map(q => (
-                <QuizCard key={q.id} quiz={q} onStart={() => startQuiz(q)} onView={() => nav(`/quiz/${q.id}`)} />
-              ))}
-              {filteredQuizzes().length === 0 && (
-                <div className="p-4 bg-white rounded shadow-sm text-gray-600">No quizzes found for your filters.</div>
-              )}
-            </div>
+            {filteredQuizzes().length > 0 ? (
+              <QuizList
+                quizzes={filteredQuizzes()}
+                onStart={(q) => startQuiz(q)}
+                onView={(q) => nav(`/quiz/${q.id}`)}
+              />
+            ) : (
+              <EmptyState
+                title="No quizzes match your filters"
+                subtitle="Try clearing filters or refresh to check new quizzes."
+                actionLabel="Refresh"
+                onAction={() => refreshData(false)}
+              />
+            )}
           </div>
 
           <aside className="space-y-4">

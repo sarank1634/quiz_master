@@ -111,11 +111,26 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const user = await User.findByEmail(email);
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    const { email, password, fullName } = req.body;
+    let user = await User.findByEmail(email);
+
+    // If user doesn't exist, auto-register as a normal user
+    if (!user) {
+      const nameFromEmail = email?.split('@')[0]?.replace(/\W+/g, ' ') || 'New User';
+      const displayName = fullName && fullName.trim() ? fullName.trim() : nameFromEmail;
+      user = await User.createUser({
+        email,
+        password,
+        fullName: displayName
+      });
+    }
+
+    // Validate password for existing or newly created user
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
+
     const token = generateToken(user);
     const { password: _, ...userData } = user.toJSON();
     res.json({ success: true, message: 'Login successful', user: userData, token });
@@ -135,20 +150,38 @@ app.get('/api/auth/admin/users', authenticateToken, requireAdmin, async (req, re
   res.json({ success: true, users: users.map(u => u.toJSON()) });
 });
 
+// Placeholder Quiz and Score routes to support frontend dashboard
+// These can be replaced later with real Sequelize models and queries.
+app.get('/api/quizzes/upcoming', authenticateToken, async (req, res) => {
+  // Return an empty list for now; frontend can handle empty state
+  return res.json({ success: true, quizzes: [] });
+});
+
+app.get('/api/scores/me', authenticateToken, async (req, res) => {
+  // Return an empty list for now; implement real scores later
+  return res.json({ success: true, scores: [] });
+});
+
+app.post('/api/events', authenticateToken, async (req, res) => {
+  try {
+    // Simple logger for now
+    console.log('📊 Event:', { userId: req.user?.id, ...req.body });
+    return res.json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // ==============================
 // Start Server
 // ==============================
 (async () => {
   await sequelize.sync({ alter: true });
 
-  // Seed admin & sample user
+  // Seed admin (sample user removed; new users can login to auto-register)
   if (!await User.findByEmail('admin@quizmaster.com')) {
     await User.createAdmin({ email: 'admin@quizmaster.com', password: 'admin123', fullName: 'Quiz Master Admin' });
     console.log('👑 Default admin created');
-  }
-  if (!await User.findByEmail('user@quizmaster.com')) {
-    await User.createUser({ email: 'user@quizmaster.com', password: 'user123', fullName: 'Sample User' });
-    console.log('👤 Sample user created');
   }
 
   app.listen(PORT, () => {

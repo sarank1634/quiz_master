@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
+import api from '../lib/apiClient';
 import { useDispatch } from 'react-redux';
 import { loginSuccess } from '../store/authSlice';
 import { useNavigate, Link } from 'react-router-dom';
@@ -62,22 +62,30 @@ export default function Register() {
     setIsLoading(true);
     
     try {
-      // Simulate API call for demo
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // For demo purposes, auto-login after registration
-      dispatch(loginSuccess({ 
-        user: { 
-          name: formData.fullName, 
-          email: formData.email,
-          qualification: formData.qualification 
-        }, 
-        token: 'demo-token' 
-      }));
-      
-      navigate('/');
+      // Real registration via API
+      const res = await api.post('/auth/register', {
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        qualification: formData.qualification,
+        dateOfBirth: formData.dob
+      });
+
+      const { token, user } = res.data;
+
+      // Persist token for subsequent requests
+      if (token) localStorage.setItem('token', token);
+
+      // Auto-login after registration
+      dispatch(loginSuccess({ user, token }));
+
+      // Redirect based on role
+      const role = (user && user.role) || 'user';
+      navigate(role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
     } catch (error) {
       console.error('Registration failed:', error);
+      const msg = error?.response?.data?.message || 'Registration failed. Please try again.';
+      setErrors({ general: msg });
     } finally {
       setIsLoading(false);
     }

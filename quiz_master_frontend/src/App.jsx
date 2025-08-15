@@ -6,6 +6,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
 import Login from './Components/Login'
 import Register from './Components/Register'
 import Home from './Home'
+import UserDashboard from './user/UserDashboard'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -16,6 +17,7 @@ function App() {
         <Route path='/' element={<Home />} />
         <Route path='/login' element={<Login />} />
         <Route path='/register' element={<Register />} />
+        <Route path='/user/dashboard' element={<UserDashboard />} />
       </Routes>
     </Router>
   )
