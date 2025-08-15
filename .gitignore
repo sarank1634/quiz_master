@@ -1,0 +1,4 @@
+quiz_master_backend/node_modules
+package-lock.json
+package.json
+# quiz_master_backend/coverage
