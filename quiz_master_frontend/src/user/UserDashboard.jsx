@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/apiClient';
 import Navbar from '../Components/Navbar';
-import QuizRunner from '../Components/QuizRunner';
+import QuizRunner from '../pages/QuizRunner';
 import ScoreTable from '../Components/ScoreTable';
 import SummaryCharts from '../Components/SummaryCharts';
 import Loading from '../Components/Loading';

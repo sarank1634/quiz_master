@@ -52,6 +52,32 @@ User.createUser = async ({ email, password, fullName, qualification, dateOfBirth
 User.findByEmail = (email) => User.findOne({ where: { email } });
 
 // ==============================
+// Additional Models (Admin)
+// ==============================
+const Subject = sequelize.define('Subject', {
+  name: { type: DataTypes.STRING, allowNull: false }
+}, { tableName: 'subjects' });
+
+const Quiz = sequelize.define('Quiz', {
+  title: { type: DataTypes.STRING },
+  subjectId: { type: DataTypes.INTEGER, allowNull: false },
+  scheduledAt: { type: DataTypes.DATE }
+}, { tableName: 'quizzes' });
+
+const Attempt = sequelize.define('Attempt', {
+  userId: { type: DataTypes.INTEGER, allowNull: false },
+  quizId: { type: DataTypes.INTEGER, allowNull: false },
+  score: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 }
+}, { tableName: 'attempts' });
+
+// Relations (optional for counts; useful for future)
+Subject.hasMany(Quiz, { foreignKey: 'subjectId' });
+Quiz.belongsTo(Subject, { foreignKey: 'subjectId' });
+Quiz.hasMany(Attempt, { foreignKey: 'quizId' });
+Attempt.belongsTo(Quiz, { foreignKey: 'quizId' });
+Attempt.belongsTo(User, { foreignKey: 'userId' });
+
+// ==============================
 // Auth Helpers
 // ==============================
 const generateToken = (user) => jwt.sign(
@@ -139,6 +165,23 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+app.post('/api/auth/admin/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findByEmail(email);
+    if (!user) return res.status(401).json({ success: false, message: 'Invalid admin credentials' });
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok || user.role !== 'admin') {
+      return res.status(401).json({ success: false, message: 'Invalid admin credentials' });
+    }
+    const token = generateToken(user);
+    const { password: _, ...userData } = user.toJSON();
+    res.json({ success: true, token, user: userData });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 app.get('/api/auth/profile', authenticateToken, async (req, res) => {
   const user = await User.findByPk(req.user.id);
   if (!user) return res.status(404).json({ success: false, message: 'User not found' });
@@ -148,6 +191,40 @@ app.get('/api/auth/profile', authenticateToken, async (req, res) => {
 app.get('/api/auth/admin/users', authenticateToken, requireAdmin, async (req, res) => {
   const users = await User.findAll();
   res.json({ success: true, users: users.map(u => u.toJSON()) });
+});
+
+app.get('/api/admin/overview', authenticateToken, requireAdmin, async (req, res) => {
+  const [users, quizzes, subjects, attempts] = await Promise.all([
+    User.count(), Quiz.count(), Subject.count(), Attempt.count()
+  ]);
+
+  const subjectRows = await Subject.findAll({ raw: true });
+  const bySubject = await Promise.all(subjectRows.map(async (s) => {
+    const subjectQuizzes = await Quiz.findAll({ where: { subjectId: s.id }, raw: true });
+    const ids = subjectQuizzes.map(q => q.id);
+    const all = ids.length ? await Attempt.findAll({ where: { quizId: ids }, raw: true }) : [];
+    const attemptsCount = all.length;
+    const topScore = all.reduce((m, a) => Math.max(m, Math.round((a.score || 0) * 100)), 0);
+    return { subject: s.name, attempts: attemptsCount || 0, topScore };
+  }));
+
+  res.json({
+    stats: { users, quizzes, subjects, attempts },
+    bySubject
+  });
+});
+
+app.get('/api/admin/subjects', authenticateToken, requireAdmin, async (req, res) => {
+  const rows = await Subject.findAll({ order: [['createdAt','DESC']] });
+  res.json({ subjects: rows });
+});
+
+app.post('/api/admin/subjects', authenticateToken, requireAdmin, async (req, res) => {
+  if (!req.body?.name || !req.body.name.trim()) {
+    return res.status(400).json({ success: false, message: 'Name is required' });
+  }
+  const s = await Subject.create({ name: req.body.name.trim() });
+  res.status(201).json({ subject: s });
 });
 
 // Placeholder Quiz and Score routes to support frontend dashboard
