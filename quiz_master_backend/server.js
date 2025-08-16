@@ -258,7 +258,7 @@ app.post('/api/events', authenticateToken, async (req, res) => {
   // Seed admin (sample user removed; new users can login to auto-register)
   if (!await User.findByEmail('admin@quizmaster.com')) {
     await User.createAdmin({ email: 'admin@quizmaster.com', password: 'admin123', fullName: 'Quiz Master Admin' });
-    console.log('👑 Default admin created');
+    console.log('Default admin created');
   }
 
   app.listen(PORT, () => {
