@@ -15,7 +15,7 @@ const seedDatabase = async () => {
     // Create admin users
     const admins = [
       {
-        email: 'admin@quizmaster.com',
+        email: ' admin@quizmaster.com ',
         password: 'admin123',
         fullName: 'Quiz Master Admin',
         role: 'admin'
