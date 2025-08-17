@@ -1,15 +1,15 @@
 // src/pages/UserDashboard.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../lib/apiClient';
-import Navbar from '../Components/Navbar';
-import QuizRunner from '../pages/QuizRunner';
-import ScoreTable from '../Components/ScoreTable';
-import SummaryCharts from '../Components/SummaryCharts';
-import Loading from '../Components/Loading';
-import FilterBar from '../Components/FilterBar';
-import EmptyState from '../Components/EmptyState';
-import QuizList from '../Components/QuizList';
+import api from '../../lib/apiClient';
+import Navbar from '../../components/Navbar';
+import QuizRunner from '../QuizRunner';
+import ScoreTable from '../../components/ScoreTable';
+import SummaryCharts from '../../components/SummaryCharts';
+import Loading from '../../components/Loading';
+import FilterBar from '../../components/FilterBar';
+import EmptyState from '../../components/EmptyState';
+import QuizList from './QuizList';
 import { formatISO, parseISO } from 'date-fns';
 
 export default function UserDashboard() {
@@ -24,7 +24,6 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // protect route: redirect if no token
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -60,7 +59,7 @@ export default function UserDashboard() {
       const matchesText = `${q.subject} ${q.chapter} ${q.title || ''}`.toLowerCase().includes(filterText.toLowerCase());
       if (!matchesText) return false;
       if (!dateFilter) return true;
-      const qDate = q.scheduledAt ? q.scheduledAt.split('T')[0] : q.date; // adapt to backend shape
+      const qDate = q.scheduledAt ? q.scheduledAt.split('T')[0] : q.date;
       return qDate === dateFilter;
     });
   }
@@ -68,7 +67,6 @@ export default function UserDashboard() {
   function startQuiz(q) {
     setActiveQuiz(q);
     setQuizOpen(true);
-    // log event for analytics
     api.post('/events', { type: 'quiz_start', quizId: q.id, userId: user.id, ts: new Date().toISOString() }).catch(()=>{});
   }
 
@@ -77,13 +75,12 @@ export default function UserDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar userName={user?.fullName || user?.name} />
-      <main className="max-w-6xl mx-auto p-6">
-        <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+      <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h2 className="text-2xl font-semibold">Welcome, {user?.fullName || user?.name}</h2>
-            <p className="text-sm text-gray-500">Pick an upcoming quiz and start practicing.</p>
+            <h1 className="text-3xl font-bold text-gray-900">Welcome, {user?.fullName || user?.name}</h1>
+            <p className="text-md text-gray-600">Pick an upcoming quiz and start practicing.</p>
           </div>
-
           <FilterBar
             filterText={filterText}
             setFilterText={setFilterText}
@@ -91,19 +88,16 @@ export default function UserDashboard() {
             setDateFilter={setDateFilter}
             onClear={() => { setFilterText(''); setDateFilter(''); }}
             onRefresh={() => refreshData(false)}
+            refreshing={refreshing}
           />
         </header>
 
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium">Upcoming Quizzes</h3>
-              <div className="text-sm text-gray-500 flex items-center gap-2">
-                {refreshing && <span className="animate-pulse">Refreshing…</span>}
-                <span>{filteredQuizzes().length} found</span>
-              </div>
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="lg:w-2/3">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-semibold text-gray-800">Upcoming Quizzes</h2>
+              <span className="text-md text-gray-500">{filteredQuizzes().length} found</span>
             </div>
-
             {filteredQuizzes().length > 0 ? (
               <QuizList
                 quizzes={filteredQuizzes()}
@@ -113,32 +107,36 @@ export default function UserDashboard() {
             ) : (
               <EmptyState
                 title="No quizzes match your filters"
-                subtitle="Try clearing filters or refresh to check new quizzes."
+                subtitle="Try clearing filters or refresh to check for new quizzes."
                 actionLabel="Refresh"
                 onAction={() => refreshData(false)}
               />
             )}
           </div>
 
-          <aside className="space-y-4">
-            <div className="bg-white p-4 rounded shadow-sm">
-              <h4 className="font-semibold mb-2">Recent Scores</h4>
-              <ScoreTable scores={scores.slice(0,6)} quizzes={quizzes} compact />
+          <aside className="lg:w-1/3 space-y-6">
+            <div className="bg-white p-5 rounded-lg shadow-sm">
+              <h3 className="font-semibold text-xl mb-3 text-gray-800">Recent Scores</h3>
+              <ScoreTable scores={scores.slice(0, 6)} quizzes={quizzes} compact />
             </div>
 
-            <div className="bg-white p-4 rounded shadow-sm">
-              <h4 className="font-semibold mb-2">Summary</h4>
+            <div className="bg-white p-5 rounded-lg shadow-sm">
+              <h3 className="font-semibold text-xl mb-3 text-gray-800">Summary</h3>
               <SummaryCharts quizzes={quizzes} scores={scores} />
             </div>
           </aside>
-        </section>
+        </div>
       </main>
 
-      <QuizRunner open={quizOpen} quiz={activeQuiz} onClose={() => setQuizOpen(false)} onSubmitSuccess={(result) => {
-        // refresh scores
-        api.get('/scores/me').then(r => setScores(r.data.scores)).catch(()=>{});
-        setQuizOpen(false);
-      }} />
+      <QuizRunner 
+        open={quizOpen} 
+        quiz={activeQuiz} 
+        onClose={() => setQuizOpen(false)} 
+        onSubmitSuccess={(result) => {
+          api.get('/scores/me').then(r => setScores(r.data.scores)).catch(()=>{});
+          setQuizOpen(false);
+        }} 
+      />
     </div>
   );
 }

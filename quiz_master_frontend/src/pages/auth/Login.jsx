@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import api from '../lib/apiClient';
-import { loginSuccess } from '../store/authSlice';
+import api from '../../lib/apiClient';
+import { loginSuccess } from '../../store/authSlice';
 import { useNavigate, Link } from 'react-router-dom';
-import useGoogleAuth from '../hooks/useGoogleAuth';
+import useGoogleAuth from '../../hooks/useGoogleAuth';
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -343,7 +343,7 @@ export default function Login() {
             <p className="text-white/70">
               Don't have an account?{' '}
               <Link 
-                to="/register" 
+                to="/signup" 
                 className="text-white font-semibold hover:text-white/80 transition-colors duration-200"
               >
                 Sign Up

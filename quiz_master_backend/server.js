@@ -109,7 +109,18 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? 'your-frontend-domain.com' : 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (/^http:\/\/localhost:\d+$/.test(origin)) {
+      return callback(null, true);
+    }
+    // You can add your production domain here
+    // if (origin === 'your-frontend-domain.com') { 
+    //   return callback(null, true);
+    // }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -212,6 +223,28 @@ app.get('/api/admin/overview', authenticateToken, requireAdmin, async (req, res)
     stats: { users, quizzes, subjects, attempts },
     bySubject
   });
+});
+
+app.get('/api/admin/recent-activity', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const activities = await User.findAll({
+      order: [['createdAt', 'DESC']],
+      limit: 5,
+      attributes: ['id', 'fullName', 'email', 'createdAt'],
+    });
+
+    const formattedActivities = activities.map(user => ({
+      id: user.id,
+      user: { name: user.fullName, email: user.email },
+      action: 'signed up',
+      details: '',
+      createdAt: user.createdAt,
+    }));
+
+    res.json({ success: true, activities: formattedActivities });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 app.get('/api/admin/subjects', authenticateToken, requireAdmin, async (req, res) => {

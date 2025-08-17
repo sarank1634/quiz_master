@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import api from '../lib/apiClient';
+import api from '../../lib/apiClient';
 import { useDispatch } from 'react-redux';
-import { loginSuccess } from '../store/authSlice';
+import { loginSuccess } from '../../store/authSlice';
 import { useNavigate, Link } from 'react-router-dom';
-import useGoogleAuth from '../hooks/useGoogleAuth';
+import useGoogleAuth from '../../hooks/useGoogleAuth';
 
-export default function Register() {
+export default function Signup() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',

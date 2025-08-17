@@ -1,6 +1,6 @@
 import { useState  } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../lib/apiClient";
+import api from "../../lib/apiClient";
 import {motion} from "framer-motion";
 
 export default function AdminLogin() {
