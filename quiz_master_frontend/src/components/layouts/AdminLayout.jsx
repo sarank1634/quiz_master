@@ -1,7 +1,8 @@
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FiGrid, FiBook, FiBox, FiFileText, FiCheckSquare, FiUsers, FiBarChart2, FiLogOut, FiMenu, FiX, FiChevronRight } from 'react-icons/fi';
+import { FiGrid, FiBook, FiBox, FiFileText, FiCheckSquare, FiUsers, FiBarChart2, FiLogOut, FiMenu, FiX } from 'react-icons/fi';
 import { useState } from 'react';
+import AdminNavbar from "../AdminNavbar";
 
 const navLinks = [
   { to: "/admin", end: true, icon: <FiGrid />, label: "Dashboard" },
@@ -81,19 +82,7 @@ export default function AdminLayout() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        <motion.header
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.4 }}
-          className="bg-white border-b px-6 h-16 flex items-center justify-between sticky top-0 z-10"
-        >
-          <div className="flex items-center text-sm text-gray-500">
-            <span>Admin</span>
-            <FiChevronRight className="mx-1" size={14} />
-            <span className="font-semibold text-gray-800">{getPageTitle()}</span>
-          </div>
-        </motion.header>
-
+        <AdminNavbar />
         <main className="flex-1 p-6 overflow-auto">
           <Outlet />
         </main>

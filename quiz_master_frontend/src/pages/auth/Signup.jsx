@@ -79,9 +79,9 @@ export default function Signup() {
       // Auto-login after registration
       dispatch(loginSuccess({ user, token }));
 
-      // Redirect based on role
+      // Redirect to admin dashboard (user dashboard removed)
       const role = (user && user.role) || 'user';
-      navigate(role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
+      navigate('/admin/dashboard');
     } catch (error) {
       console.error('Registration failed:', error);
       const msg = error?.response?.data?.message || 'Registration failed. Please try again.';

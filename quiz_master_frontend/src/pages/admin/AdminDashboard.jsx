@@ -158,7 +158,7 @@ const StatCard = ({ title, value, icon, isLoading, to }) => (
   </Link>
 );
 
-const ChartCard = ({ title, children, isLoading }) => (
+const ChartCard = ({ title, children, isLoading, onExpand }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -166,7 +166,18 @@ const ChartCard = ({ title, children, isLoading }) => (
     whileHover={{ y: -5, boxShadow: '0px 10px 20px rgba(0,0,0,0.05)' }}
     className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-full"
   >
-    <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+      {onExpand && (
+        <button
+          onClick={onExpand}
+          className="text-gray-400 hover:text-blue-600 transition-colors"
+          aria-label="Expand chart"
+        >
+          <FiMaximize2 />
+        </button>
+      )}
+    </div>
     <div className="h-[300px]">
       {isLoading ? (
         <div className="animate-pulse h-full flex items-center justify-center">
@@ -178,6 +189,47 @@ const ChartCard = ({ title, children, isLoading }) => (
     </div>
   </motion.div>
 );
+
+const ChartModal = ({ open, title, onClose, children }) => {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={onClose}
+        >
+          <div className="absolute inset-0 bg-black/40" />
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+            className="relative z-10 w-[95vw] max-w-6xl max-h-[85vh] bg-white rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
+            </div>
+            <div className="h-[65vh]">
+              {children}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -353,6 +405,8 @@ export default function Dashboard() {
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const intervalRef = useRef(null);
   const navigate = useNavigate();
+  const [expandedChart, setExpandedChart] = useState(null); // 'bar' | 'pie' | null
+  const recentActivityRef = useRef([]);
 
   const fetchData = useCallback(async (silent = false) => {
     try {
@@ -375,10 +429,10 @@ export default function Dashboard() {
       const newBySubject = overviewRes.data.bySubject || [];
       const newActivity = activityRes.data.activities || [];
       
-      // Check for new activity and show notifications
-      if (silent && recentActivity.length > 0 && newActivity.length > 0) {
+      // Check for new activity and show notifications using ref to avoid re-render dependency loops
+      if (silent && recentActivityRef.current.length > 0 && newActivity.length > 0) {
         const latestActivity = newActivity[0];
-        const wasNew = !recentActivity.find(activity => activity.id === latestActivity.id);
+        const wasNew = !recentActivityRef.current.find(activity => activity.id === latestActivity.id);
         
         if (wasNew) {
           const notification = {
@@ -398,6 +452,7 @@ export default function Dashboard() {
       setStats(newStats);
       setBySubject(newBySubject);
       setRecentActivity(newActivity);
+      recentActivityRef.current = newActivity;
       setLastUpdate(new Date());
 
     } catch (err) {
@@ -406,7 +461,7 @@ export default function Dashboard() {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [dateRange, filters, recentActivity]);
+  }, [dateRange, filters]);
   
   const handleFilterChange = useCallback((key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -472,7 +527,7 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-8">
-      <div className="flex flex-wrap justify-between items-center gap-4">
+      <div className="sticky top-0 z-10 bg-white/70 backdrop-blur rounded-xl px-3 py-3 flex flex-wrap justify-between items-center gap-4 border border-gray-100">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600">Live overview of your quiz platform</p>
@@ -590,7 +645,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 xl:grid-cols-2 gap-8">
         <div className="lg:col-span-3 xl:col-span-1">
-          <ChartCard title="Top Scores by Subject" isLoading={isLoading}>
+          <ChartCard title="Top Scores by Subject" isLoading={isLoading} onExpand={() => setExpandedChart('bar')}>
           {bySubject.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={bySubject} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} onClick={handleBarClick}>
@@ -607,7 +662,7 @@ export default function Dashboard() {
         </div>
 
         <div className="lg:col-span-2 xl:col-span-1">
-          <ChartCard title="Quiz Attempts Distribution" isLoading={isLoading}>
+          <ChartCard title="Quiz Attempts Distribution" isLoading={isLoading} onExpand={() => setExpandedChart('pie')}>
           {bySubject.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -679,6 +734,54 @@ export default function Dashboard() {
           />
         ))}
       </AnimatePresence>
+
+      {/* Expanded Chart Modal */}
+      <ChartModal
+        open={!!expandedChart}
+        title={expandedChart === 'bar' ? 'Top Scores by Subject' : expandedChart === 'pie' ? 'Quiz Attempts Distribution' : ''}
+        onClose={() => setExpandedChart(null)}
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          {expandedChart === 'bar' ? (
+            <BarChart data={bySubject} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
+              <XAxis dataKey="subject" tick={{ fontSize: 12 }} angle={-30} textAnchor="end" height={60} interval={0} />
+              <YAxis tick={{ fontSize: 12 }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="topScore" fill="#3B82F6" radius={[6, 6, 0, 0]} name="Top Score" />
+            </BarChart>
+          ) : expandedChart === 'pie' ? (
+            <PieChart>
+              <Pie
+                data={bySubject}
+                dataKey="attempts"
+                nameKey="subject"
+                cx="50%"
+                cy="50%"
+                outerRadius={'85%'}
+                innerRadius={'45%'}
+                paddingAngle={2}
+                labelLine={false}
+                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                  const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
+                  const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
+                  return percent > 0.03 ? (
+                    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="text-xs font-bold">
+                      {`${(percent * 100).toFixed(0)}%`}
+                    </text>
+                  ) : null;
+                }}
+              >
+                {bySubject.map((entry, index) => (
+                  <Cell key={`cell-large-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '12px' }} iconType="circle" />
+            </PieChart>
+          ) : null}
+        </ResponsiveContainer>
+      </ChartModal>
     </div>
   );
 }

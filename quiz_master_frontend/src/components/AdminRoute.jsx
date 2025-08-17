@@ -10,7 +10,11 @@ export default function AdminRoute() {
     if (!token) return setAllowed(false);
     adminApi
       .get("/auth/profile")
-      .then((res) => setAllowed(res.data?.user?.role === "admin"))
+      .then((res) => {
+        const role = res.data?.user?.role;
+        const roleLower = typeof role === 'string' ? role.toLowerCase() : '';
+        setAllowed(roleLower === "admin" || roleLower === "superadmin");
+      })
       .catch(() => setAllowed(false));
   }, []);
 

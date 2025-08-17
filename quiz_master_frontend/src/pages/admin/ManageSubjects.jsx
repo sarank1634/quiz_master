@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import adminApi from "../../lib/adminApi";
-import { FiPlus, FiEdit, FiTrash2, FiSearch, FiBookOpen, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiSearch, FiBookOpen, FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi';
 import Loading from "../../components/Loading";
 import EmptyState from "../../components/EmptyState";
 
@@ -20,14 +20,24 @@ const SubjectModal = ({ subject, onClose, onSave, isLoading }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      onClick={() => !isLoading && onClose()}
     >
       <motion.div 
-        className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md"
+        className="relative bg-white p-6 rounded-lg shadow-xl w-full max-w-md"
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-xl font-semibold mb-4">{subject ? 'Edit Subject' : 'Add New Subject'}</h3>
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={() => !isLoading && onClose()}
+          className="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition"
+        >
+          <FiX />
+        </button>
+        <h3 className="text-xl font-semibold mb-4 pr-8">{subject ? 'Edit Subject' : 'Add New Subject'}</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Subject Name" className="w-full p-2 border rounded-md" required />
           <div className="flex justify-end gap-3 pt-4">
@@ -41,6 +51,9 @@ const SubjectModal = ({ subject, onClose, onSave, isLoading }) => {
     </motion.div>
   );
 };
+
+// Close modal on ESC key
+// Placed outside component scope previously; ensure within a component using effect.
 
 export default function ManageSubjects() {
   const [subjects, setSubjects] = useState([]);
@@ -111,7 +124,12 @@ export default function ManageSubjects() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Manage Subjects</h1>
+        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          Manage Subjects
+          <span className="text-xs font-medium px-2 py-1 rounded-full bg-purple-50 text-purple-700">
+            {filteredSubjects.length} shown
+          </span>
+        </h1>
         <div className="flex items-center gap-2">
           <div className="relative">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />

@@ -12,10 +12,10 @@ const seedDatabase = async () => {
     await sequelize.sync({ force: true });
     console.log('✅ Database tables created successfully.');
     
-    // Create admin users
+    // Create admin users (distinct roles)
     const admins = [
       {
-        email: ' admin@quizmaster.com ',
+        email: 'admin@quizmaster.com', // fixed stray spaces
         password: 'admin123',
         fullName: 'Quiz Master Admin',
         role: 'admin'
@@ -24,7 +24,7 @@ const seedDatabase = async () => {
         email: 'superadmin@quizmaster.com',
         password: 'super123',
         fullName: 'Super Administrator',
-        role: 'admin'
+        role: 'superadmin'
       }
     ];
     
@@ -70,8 +70,8 @@ const seedDatabase = async () => {
     console.log('\n🎉 Database seeding completed successfully!');
     console.log('\n📋 Login Credentials:');
     console.log('\n👑 ADMIN ACCOUNTS:');
-    console.log('   Email: admin@quizmaster.com      | Password: admin123');
-    console.log('   Email: superadmin@quizmaster.com | Password: super123');
+    console.log('   Role: admin      | Email: admin@quizmaster.com      | Password: admin123');
+    console.log('   Role: superadmin | Email: superadmin@quizmaster.com | Password: super123');
     console.log('\n👤 USER ACCOUNTS:');
     console.log('   Email: user@quizmaster.com       | Password: user123');
     console.log('   Email: student@quizmaster.com    | Password: student123');

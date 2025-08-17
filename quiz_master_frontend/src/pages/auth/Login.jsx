@@ -51,7 +51,8 @@ export default function Login() {
       if (token) localStorage.setItem('token', token);
       dispatch(loginSuccess({ user, token }));
       const role = (user && user.role) || 'user';
-      navigate(role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
+      const roleLower = typeof role === 'string' ? role.toLowerCase() : 'user';
+      navigate('/admin/dashboard');
     } catch (error) {
       console.error('Re-login failed:', error);
       const msg = error?.response?.data?.message || 'Re-login failed. Please try again.';
@@ -101,9 +102,10 @@ export default function Login() {
       // Update app state
       dispatch(loginSuccess({ user, token }));
       
-      // Redirect based on role
+      // Redirect to admin dashboard (user dashboard removed)
       const role = (user && user.role) || 'user';
-      navigate(role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
+      const roleLower = typeof role === 'string' ? role.toLowerCase() : 'user';
+      navigate('/admin/dashboard');
     } catch (error) {
       console.error('Login failed:', error);
       const msg = error?.response?.data?.message || 'Login failed. Please try again.';
@@ -120,7 +122,7 @@ export default function Login() {
       localStorage.setItem('token', token);
       const demoUser = { name: 'Demo User', email: 'demo@quizmaster.com', role: 'user' };
       dispatch(loginSuccess({ user: demoUser, token }));
-      navigate('/user/dashboard');
+      navigate('/admin/dashboard');
     }, 500);
   };
 
@@ -145,8 +147,9 @@ export default function Login() {
       localStorage.setItem('last_random_user', JSON.stringify({ email, password }));
       dispatch(loginSuccess({ user, token }));
       const role = (user && user.role) || 'user';
+      const roleLower = typeof role === 'string' ? role.toLowerCase() : 'user';
       setInfo(`Random account created. Save these to re-login later: ${email} / ${password}`);
-      navigate(role === 'admin' ? '/admin/dashboard' : '/user/dashboard');
+      navigate('/admin/dashboard');
     } catch (error) {
       console.error('Random login failed:', error);
       const msg = error?.response?.data?.message || 'Random login failed. Please try again.';

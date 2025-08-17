@@ -20,20 +20,39 @@ const UserModal = ({ user, onClose, onSave, isLoading }) => {
     onSave(formData);
   };
 
+  // Close on ESC key
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
   return (
     <motion.div 
       className="fixed inset-0 z-50 grid place-items-center bg-black/50"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      onClick={() => !isLoading && onClose()}
     >
       <motion.div 
-        className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md"
+        className="relative bg-white p-6 rounded-lg shadow-xl w-full max-w-md"
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-xl font-semibold mb-4">{user ? 'Edit User' : 'Add New User'}</h3>
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={() => !isLoading && onClose()}
+          className="absolute top-3 right-3 p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition"
+        >
+          <FiX />
+        </button>
+        <h3 className="text-xl font-semibold mb-4 pr-8">{user ? 'Edit User' : 'Add New User'}</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input name="fullName" value={formData.fullName} onChange={handleChange} placeholder="Full Name" className="w-full p-2 border rounded-md" required />
           <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email" className="w-full p-2 border rounded-md" required />
@@ -124,7 +143,12 @@ export default function ManageUsers() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Manage Users</h1>
+        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          Manage Users
+          <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-50 text-blue-700">
+            {filteredUsers.length} shown
+          </span>
+        </h1>
         <div className="flex items-center gap-2">
           <div className="relative">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
